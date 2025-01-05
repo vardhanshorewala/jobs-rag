@@ -5,18 +5,16 @@ from typing import List
 from api.indexing import index_jobs
 from api.vector_store import create_chroma_client, query_similar
 from api.openai_utils import get_embedding, generate_llm_response
-from api.query_history import add_query_to_history, get_query_history
+from api.query_history import add_query_to_history, get_query_history, generate_session_id
 from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    # Replace with your frontend origin
     allow_origins=["http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods (e.g., GET, POST, OPTIONS)
-    # Allow all headers (e.g., Content-Type, Authorization)
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 chroma_client = create_chroma_client()
@@ -28,12 +26,9 @@ class QueryRequest(BaseModel):
     top_k: int = 3
 
 
-# @app.on_event("startup")
-# def startup_event():
-#     index_jobs(collection_name=COLLECTION_NAME)
-
 @app.post("/query")
 def query_jobs(payload: QueryRequest):
+    session_id = generate_session_id()
     query_embedding = get_embedding(payload.user_query)
 
     results = query_similar(chroma_client, COLLECTION_NAME,
@@ -90,11 +85,11 @@ def query_jobs(payload: QueryRequest):
     """
 
     answer = generate_llm_response(prompt)
-    add_query_to_history(payload.user_query, answer)
-    return {"answer": answer, "context": context_chunks}
+    add_query_to_history(session_id, payload.user_query, answer)
+    return {"session_id": session_id, "answer": answer, "context": context_chunks}
 
 
 @app.get("/query/history")
 def query_history(limit: int = 10):
     history = get_query_history(limit)
-    return {"history": [{"query": q[0], "response": q[1], "timestamp": q[2]} for q in history]}
+    return {"history": [{"session_id": q[0], "query": q[1], "response": q[2], "timestamp": q[3]} for q in history]}

@@ -2,34 +2,42 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from 'next/link'
 import { ArrowLeft, Clock } from 'lucide-react'
 
 interface PastSearch {
-  id: number
-  query: string
-  timestamp: string
-  resultCount: number
+  session_id: string;
+  query: string;
+  response: string;
+  timestamp: string;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function PastSearches() {
   const [pastSearches, setPastSearches] = useState<PastSearch[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchPastSearches = async () => {
-      // Simulating API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const mockPastSearches: PastSearch[] = Array.from({ length: 10 }, (_, i) => ({
-        id: i + 1,
-        query: `Past search query ${i + 1}`,
-        timestamp: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
-        resultCount: Math.floor(Math.random() * 100) + 1
-      }))
-      setPastSearches(mockPastSearches)
-      setIsLoading(false)
+      setIsLoading(true)
+      setError(null)
+      try {
+        const response = await fetch(`${API_URL}/query/history?limit=10`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch past searches')
+        }
+        const data = await response.json()
+        setPastSearches(data.history)
+      } catch (err) {
+        setError('An error occurred while fetching past searches')
+        console.error(err)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     fetchPastSearches()
@@ -41,39 +49,53 @@ export default function PastSearches() {
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-gray-100">Past Searches</CardTitle>
         </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="text-red-500 mb-4">{error}</div>
+          )}
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full bg-gray-800" />
+              ))}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-gray-300">Session ID</TableHead>
+                  <TableHead className="text-gray-300">Query</TableHead>
+                  <TableHead className="text-gray-300">Response</TableHead>
+                  <TableHead className="text-gray-300">Timestamp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pastSearches.map((search, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="text-gray-300">
+                      <Link href={`/?session=${search.session_id}`} className="text-blue-400 hover:underline">
+                        {search.session_id}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-gray-300">{search.query}</TableCell>
+                    <TableCell className="text-gray-300">
+                      {search.response.length > 100
+                        ? `${search.response.substring(0, 100)}...`
+                        : search.response}
+                    </TableCell>
+                    <TableCell className="text-gray-300">
+                      <span className="flex items-center">
+                        <Clock className="mr-1 h-4 w-4" />
+                        {new Date(search.timestamp).toISOString().split('T')[0]}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
       </Card>
-
-      <ScrollArea className="h-[600px] rounded-md border border-gray-800 p-4 bg-black">
-        {isLoading ? (
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <Card key={i} className="bg-gray-900 border-gray-800">
-                <CardContent className="p-4">
-                  <Skeleton className="h-4 w-2/3 bg-gray-800 mb-2" />
-                  <Skeleton className="h-4 w-1/3 bg-gray-800" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {pastSearches.map((search) => (
-              <Card key={search.id} className="bg-gray-900 border-gray-800">
-                <CardContent className="p-4">
-                  <p className="text-lg font-semibold text-gray-100 mb-2">{search.query}</p>
-                  <div className="flex justify-between text-sm text-gray-400">
-                    <span className="flex items-center">
-                      <Clock className="mr-1 h-4 w-4" />
-                      {new Date(search.timestamp).toLocaleString()}
-                    </span>
-                    <span>{search.resultCount} results</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
       <div className="mt-4">
         <Link href="/" className="text-blue-400 hover:underline flex items-center">
           <ArrowLeft className="mr-1 h-4 w-4" />

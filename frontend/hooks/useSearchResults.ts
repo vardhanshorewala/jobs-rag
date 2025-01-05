@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { JobSearchResult, SearchResponse, StructuredAnswer } from '@/types/JobSearchResult'
+import { useRouter } from 'next/navigation'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/query'
 
 export function useSearchResults() {
   const [results, setResults] = useState<JobSearchResult[]>([])
   const [structuredAnswer, setStructuredAnswer] = useState<StructuredAnswer | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const search = async (query: string) => {
     setIsLoading(true)
@@ -30,6 +33,7 @@ export function useSearchResults() {
       
       const parsedAnswer: StructuredAnswer = JSON.parse(data.answer)
       setStructuredAnswer(parsedAnswer)
+      setSessionId(data.session_id)
 
       const parsedResults: JobSearchResult[] = data.context.map(jobString => {
         const lines = jobString.split('\n')
@@ -43,6 +47,8 @@ export function useSearchResults() {
       })
 
       setResults(parsedResults)
+      
+      router.push(`/?session=${data.session_id}`)
     } catch (err) {
       setError('An error occurred while fetching results')
       console.error(err)
@@ -51,6 +57,6 @@ export function useSearchResults() {
     }
   }
 
-  return { results, structuredAnswer, isLoading, error, search }
+  return { results, structuredAnswer, sessionId, isLoading, error, search }
 }
 

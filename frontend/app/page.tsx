@@ -1,98 +1,152 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
+import { useSearchParams } from 'next/navigation'
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useSearchResults } from '@/hooks/useSearchResults'
+import { SearchIcon, Loader2, MapPin, Briefcase, ExternalLink, CheckCircle } from 'lucide-react'
+import { ScrollArea } from "@/components/ui/scroll-area"
 import Link from 'next/link'
-import { ArrowLeft, Clock } from 'lucide-react'
+import { Textarea } from "@/components/ui/textarea"
 
-interface PastSearch {
-  query: string;
-  response: string;
-  timestamp: string;
-}
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-export default function PastSearches() {
-  const [pastSearches, setPastSearches] = useState<PastSearch[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export default function Home() {
+  const [query, setQuery] = useState('')
+  const { results, structuredAnswer, sessionId, isLoading, error, search } = useSearchResults()
+  const [message, setMessage] = useState('')
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    const fetchPastSearches = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(`${API_URL}/query/history?limit=10`)
-        if (!response.ok) {
-          throw new Error('Failed to fetch past searches')
-        }
-        const data = await response.json()
-        setPastSearches(data.history)
-      } catch (err) {
-        setError('An error occurred while fetching past searches')
-        console.error(err)
-      } finally {
-        setIsLoading(false)
-      }
+    const sessionFromUrl = searchParams?.get('session')
+    if (sessionFromUrl) {
+      console.log(`Session ID from URL: ${sessionFromUrl}`)
     }
+  }, [searchParams])
 
-    fetchPastSearches()
-  }, [])
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    search(query)
+  }
 
   return (
     <main className="container mx-auto p-4 max-w-4xl">
       <Card className="mb-8 bg-black border-gray-800">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-gray-100">Past Searches</CardTitle>
+          <CardTitle className="text-3xl font-bold text-gray-100">Modern Job Search</CardTitle>
+          <CardDescription className="text-gray-400">
+            Find your next career opportunity
+            {sessionId && <span className="ml-2">Session ID: {sessionId}</span>}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && (
-            <div className="text-red-500 mb-4">{error}</div>
-          )}
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full bg-gray-800" />
-              ))}
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <div className="relative flex-grow">
+              <SearchIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500" />
+              <Input
+                type="text"
+                placeholder="Enter job title, skills, or company"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-8 bg-gray-900 text-gray-100 border-gray-700 focus:border-blue-500"
+              />
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-gray-300">Query</TableHead>
-                  <TableHead className="text-gray-300">Response</TableHead>
-                  <TableHead className="text-gray-300">Timestamp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pastSearches.map((search, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="text-gray-300">{search.query}</TableCell>
-                    <TableCell className="text-gray-300">
-                      {search.response.length > 100
-                        ? `${search.response.substring(0, 100)}...`
-                        : search.response}
-                    </TableCell>
-                    <TableCell className="text-gray-300">
-                      <span className="flex items-center">
-                        <Clock className="mr-1 h-4 w-4" />
-                        {new Date(search.timestamp).toLocaleString()}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+            <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SearchIcon className="mr-2 h-4 w-4" />}
+              {isLoading ? 'Searching...' : 'Search'}
+            </Button>
+          </form>
         </CardContent>
       </Card>
-      <div className="mt-4">
-        <Link href="/" className="text-blue-400 hover:underline flex items-center">
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Search
+      
+      {error && (
+        <Card className="mb-8 border-red-500 bg-black">
+          <CardContent className="text-red-500 p-4">{error}</CardContent>
+        </Card>
+      )}
+      
+      {structuredAnswer && (
+        <Card className="mb-8 bg-black border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-gray-100">Search Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-300 mb-4">{structuredAnswer.summary}</p>
+            <ScrollArea className="h-[500px]">
+              <div className="space-y-4">
+                {structuredAnswer.top_jobs.map((job, index) => (
+                  <Card key={index} className="bg-gray-900 border-gray-800">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold text-gray-100">{job.title}</CardTitle>
+                      <CardDescription className="text-gray-400 flex items-center">
+                        <Briefcase className="mr-1 h-4 w-4" /> {job.organization}
+                        <MapPin className="ml-4 mr-1 h-4 w-4" /> {job.location}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="list-disc list-inside text-gray-300 mb-4">
+                        {job.highlights.map((highlight, i) => (
+                          <li key={i} className="flex items-start mb-2">
+                            <CheckCircle className="mr-2 h-4 w-4 text-green-500 flex-shrink-0 mt-1" />
+                            <span>{highlight}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <a
+                        href={job.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline flex items-center"
+                      >
+                        <ExternalLink className="mr-1 h-4 w-4" /> Apply Now
+                      </a>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-100 mb-2">Additional Insights</h3>
+                <ul className="list-disc list-inside text-gray-300">
+                  {structuredAnswer.additional_insights.map((insight, index) => (
+                    <li key={index} className="mb-2">{insight}</li>
+                  ))}
+                </ul>
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+      
+
+      <Card className="mb-8 bg-black border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-gray-100 flex items-center">
+            AI Assistant
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[200px] rounded-md border border-gray-800 p-4 bg-gray-900 mb-4">
+            <p className="text-gray-300">
+              {message || "How can I help you with your job search today?"}
+            </p>
+          </ScrollArea>
+          <form onSubmit={(e) => e.preventDefault()} className="flex gap-2">
+            <Textarea 
+              placeholder="Type your message here..."
+              className="flex-grow bg-gray-900 text-gray-100 border-gray-700 focus:border-blue-500"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+              Send
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <div className="mt-4 text-center">
+        <Link href="/past-searches" className="text-blue-400 hover:underline">
+          View Past Searches
         </Link>
       </div>
     </main>
