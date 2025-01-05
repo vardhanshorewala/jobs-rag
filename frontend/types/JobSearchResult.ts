@@ -9,6 +9,7 @@ export interface JobSearchResult {
 export interface SearchResponse {
   answer: string;
   context: string[];
+  session_id: string;
 }
 
 export interface StructuredAnswer {
