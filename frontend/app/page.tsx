@@ -33,7 +33,7 @@ export default function Home() {
     <main className="container mx-auto p-4 max-w-4xl">
       <Card className="mb-8 bg-black border-gray-800">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-gray-100">Modern Job Search</CardTitle>
+          <CardTitle className="text-3xl font-bold text-gray-100">Saathi</CardTitle>
           <CardDescription className="text-gray-400">
             Find your next career opportunity
             {sessionId && <span className="ml-2">Session ID: {sessionId}</span>}
@@ -117,32 +117,6 @@ export default function Home() {
         </Card>
       )}
       
-
-      <Card className="mb-8 bg-black border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-gray-100 flex items-center">
-            AI Assistant
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[200px] rounded-md border border-gray-800 p-4 bg-gray-900 mb-4">
-            <p className="text-gray-300">
-              {message || "How can I help you with your job search today?"}
-            </p>
-          </ScrollArea>
-          <form onSubmit={(e) => e.preventDefault()} className="flex gap-2">
-            <Textarea 
-              placeholder="Type your message here..."
-              className="flex-grow bg-gray-900 text-gray-100 border-gray-700 focus:border-blue-500"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-              Send
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
       <div className="mt-4 text-center">
         <Link href="/past-searches" className="text-blue-400 hover:underline">

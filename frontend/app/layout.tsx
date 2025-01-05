@@ -8,8 +8,8 @@ const poppins = Poppins({
 })
 
 export const metadata = {
-  title: 'Modern Job Search App',
-  description: 'Find your next career opportunity with our modern job search application',
+  title: 'Saathi',
+  description: 'Find your next career opportunity with Saathi',
 }
 
 export default function RootLayout({
